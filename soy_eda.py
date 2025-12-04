@@ -10,7 +10,12 @@ from sklearn.decomposition import PCA
 from wordcloud import WordCloud
 import seaborn as sns
 import plotly.express as px
-
+import os
+import matplotlib
+matplotlib.use("Agg")
+# Create required folders if not exist
+os.makedirs("results", exist_ok=True)
+os.makedirs("figures", exist_ok=True)
 # ===============================================================
 # 0) GPU CHECK
 # ===============================================================
@@ -31,7 +36,7 @@ model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2", device=de
 # ===============================================================
 # 2) Load Data
 # ===============================================================
-df = pd.read_csv("/home/gy53xm/semesterproject/dk_news_2016_2024.csv")
+df = pd.read_csv("dk_news_2016_2024.csv")
 df["plain_text"] = df["plain_text"].fillna("")
 df.to_csv("results/00_raw_data.csv", index=False)
 
@@ -238,7 +243,7 @@ fig = px.imshow(
     title="AI Company Mentions Over Time"
 )
 fig.write_image("figures/ai_company_timeline.png")
-
+# AI news ratio of Publisher Distribution of News Articles per Year in Denmark
 
 # ===============================================================
 # FINISHED
@@ -246,4 +251,3 @@ fig.write_image("figures/ai_company_timeline.png")
 print("✔ ALL analysis completed.")
 print("✔ All CSVs saved in ./results/")
 print("✔ All figures saved in ./figures/")
-
