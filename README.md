@@ -1,29 +1,72 @@
-DATA:https://huggingface.co/datasets/HamidBekam/dk_news_2016_2024
-# DK News 2016-2024 Dataset
-This dataset contains news articles from Denmark spanning the years 2016 to 2024. It is designed for use in natural language processing (NLP) tasks such as text classification, sentiment analysis, and topic modeling.
+# AI in Danish Media (2016–2024)
 
-Github:https://github.com/LeahLLL/AI-DK-Media-project
+## Data
+- **Hugging Face dataset:** https://huggingface.co/datasets/HamidBekam/dk_news_2016_2024  
+  **DK News 2016–2024** is a Danish news corpus spanning 2016–2024, designed for NLP tasks such as text classification, sentiment analysis, and topic modeling.
 
-data engineering:
-folder: data engineering
--embedding_more.py : Script to add SBERT embeddings and some EDA to the dataset.
--tune_AI_score_and_more.ipynb : Notebook to tune AI detection scores and perform additional EDA.
--alz_submit.ipynb : Notebook for most paper result
--sentiment.py : Script for sentiment analysis on the dataset.
--Company_extraction.ipynb : Notebook to extract company names from the news articles.
+## Repository
+- **GitHub:** https://github.com/LeahLLL/AI-DK-Media-project
 
-LLM:
-description: For AAU AI-Lab 8 Gpus vLLM classification
-folder: LLM_classification
-shard.py : actual running script for vLLM
-shard.sh: bash script to run shard.py with different parameters
-shard_start.sh: bash script to start multiple shard.sh with different parameters
-aai_sbert.def : container settings for AAU AI-Lab
+---
 
-requirements.txt : required packages for the project
+## Project Structure
 
-workflow: 
-1. run embedding_more.py to add SBERT embeddings to the dataset.
-2. use tune_AI_score_and_more.ipynb to tune AI detection scores and perform EDA.
-3. use LLM classification scripts to classify the news articles using vLLM.
-4. call alz_submit.ipynb, sentiment.py, Company_extraction.ipynb to generate results
+### 1) Data Engineering (`data engineering/`)
+Scripts and notebooks for embeddings, score tuning, EDA, and result generation.
+
+- **`embedding_more.py`**  
+  Add SBERT embeddings and run basic exploratory analysis (EDA).
+
+- **`tune_AI_score_and_more.ipynb`**  
+  Tune AI detection scores and perform additional EDA.
+
+- **`alz_submit.ipynb`**  
+  Main notebook used to generate most paper results.
+
+- **`sentiment.py`**  
+  Sentiment analysis pipeline for the dataset.
+
+- **`Company_extraction.ipynb`**  
+  Extract company/organization names from news articles.
+
+---
+
+### 2) LLM Classification (`LLM_classification/`)
+Distributed vLLM classification on AAU AI-Lab (8 GPUs total; 2 GPUs per job), executed via sharding.
+
+- **`shard.py`**  
+  Main vLLM inference script (runs one shard/partition).
+
+- **`shard.sh`**  
+  Bash wrapper to run `shard.py` with different parameters.
+
+- **`shard_start.sh`**  
+  Launcher script to start multiple `shard.sh` jobs with different shard settings.
+
+- **`aai_sbert.def`**  
+  Container definition/settings for AAU AI-Lab execution.
+
+---
+
+## Dependencies
+- **`requirements.txt`** — Required Python packages for the project.
+
+---
+
+## Workflow
+
+1. **Generate embeddings**
+   - Run `data engineering/embedding_more.py` to add SBERT embeddings to the dataset.
+
+2. **Tune scores + EDA**
+   - Use `data engineering/tune_AI_score_and_more.ipynb` to tune AI detection scores and run additional EDA.
+
+3. **LLM classification (vLLM sharded jobs)**
+   - Run scripts under `LLM_classification/` to classify news articles on AAU AI-Lab via sharding.
+
+4. **Generate final results**
+   - Use the following to produce paper-ready outputs:
+     - `data engineering/alz_submit.ipynb`
+     - `data engineering/sentiment.py`
+     - `data engineering/Company_extraction.ipynb`
+
