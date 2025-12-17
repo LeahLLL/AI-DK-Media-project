@@ -1,0 +1,38 @@
+Bootstrap: docker
+From: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+
+%labels
+    Author LuoChenghao(Soy BDS)
+    Version v1.0
+    Description SBERT + AI analytics container for AAU AI-LAB
+
+%post
+    # update
+    apt-get update && apt-get install -y --no-install-recommends \
+        git curl ca-certificates build-essential python3-dev \
+        libglib2.0-0 libsm6 libxrender1 libxext6 libgl1-mesa-glx \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Install Python dependencies
+    pip install --upgrade pip
+
+    pip install \
+        sentence-transformers \
+        pandas \
+        numpy \
+        matplotlib \
+        seaborn \
+        scikit-learn \
+        wordcloud \
+        plotly \
+        tqdm \
+        vllm
+
+
+%environment
+    export LC_ALL=C
+    export LANG=C
+    export PYTHONUNBUFFERED=1
+
+%runscript
+    echo "Container ready. Use: singularity exec --nv <container>.sif python your_script.py"
