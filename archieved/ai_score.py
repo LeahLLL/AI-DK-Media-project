@@ -18,8 +18,8 @@ keywords_query = ["AI", "kunstig intelligens", "maskinlæring", "dyb læring", "
                     "intelligente maskiner", "AI-integration", "AI-implementering", "AI-optimering", "AI-overvågning",]
 
 
-emb = np.load("results/01_embeddings.npy")
-df = pd.read_csv("results/00_raw_data.csv")
+emb = np.load("../results/01_embeddings.npy")
+df = pd.read_csv("../results/00_raw_data.csv")
 ai_vec = model.encode(queries, normalize_embeddings=True)
 query_vec = np.mean(ai_vec, axis=0)
 negative_queries = [
