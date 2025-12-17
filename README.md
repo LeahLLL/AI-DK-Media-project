@@ -9,6 +9,8 @@ folder: data engineering
 -embedding_more.py : Script to add SBERT embeddings and some EDA to the dataset.
 -tune_AI_score_and_more.ipynb : Notebook to tune AI detection scores and perform additional EDA.
 -alz_submit.ipynb : Notebook for most paper result
+-sentiment.py : Script for sentiment analysis on the dataset.
+-Company_extraction.ipynb : Notebook to extract company names from the news articles.
 
 LLM:
 description: For AAU AI-Lab 8 Gpus vLLM classification
