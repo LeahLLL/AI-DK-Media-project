@@ -24,4 +24,4 @@ workflow:
 1. run embedding_more.py to add SBERT embeddings to the dataset.
 2. use tune_AI_score_and_more.ipynb to tune AI detection scores and perform EDA.
 3. use LLM classification scripts to classify the news articles using vLLM.
-4. call alz_submit.ipynb and sentiment.py to generate results
+4. call alz_submit.ipynb, sentiment.py, Company_extraction.ipynb to generate results
