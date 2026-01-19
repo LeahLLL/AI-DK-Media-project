@@ -248,3 +248,245 @@ plt.ylabel("Number of Articles")
 plt.tight_layout()
 plt.show()
 
+#Sentiment based on multilingual model
+from google.colab import drive
+drive.mount('/content/drive')
+
+import pandas as pd
+df = pd.read_csv('/content/drive/MyDrive/danishnews.csv')
+
+import pandas as pd
+import numpy as np
+from collections import Counter
+import matplotlib.pyplot as plt
+
+# Ensure all_orgs and org_counts are defined from previous step or re-run if needed.
+# If cell eb1aa3b3 has not been run, it should be run prior to this.
+# For demonstration, I'm assuming df_sample, df, df_ai are available and 'plain_text' column exists.
+# This code re-creates all_orgs and org_counts based on existing notebook state for clarity.
+
+# Define patterns (from previous cells)
+MEDIA_PATTERNS = [
+    "avis", "blad", "bt", "b.t", "berlingske", "politiken",
+    "jyllands", "reuters", "ritzau", "afp", "bbc", "cnn",
+    "tv2", "dr", ".dk", "radio"
+]
+
+SPORTS_PATTERNS = [
+    "fc ", "f.c", "aab", "agf", "dbu", "superliga",
+    "league", "champions", "united", "city", "boldklub"
+]
+
+PUBLIC_PATTERNS = [
+    "styrelsen", "institut", "ministerium", "direktorat",
+    "politi", "region", "kommune", "folketing", "universitet"
+]
+
+def classify_actor(org):
+    o = org.lower().strip()
+
+    if any(p in o for p in MEDIA_PATTERNS):
+        return "Media"
+
+    if any(p in o for p in SPORTS_PATTERNS):
+        return "Sports"
+
+    if any(p in o for p in PUBLIC_PATTERNS):
+        return "Public Authority"
+
+    return "Company"
+
+
+# Assuming df_sample and 'org_entities' are available from previous steps
+# If df_sample and 'org_entities' are not ready, the following line will fail.
+# It's crucial that previous entity extraction cells have been run successfully.
+if 'df_sample' in locals() and 'org_entities' in df_sample.columns:
+    all_orgs = [o for sub in df_sample["org_entities"] if isinstance(sub, list) for o in sub]
+    org_counts = Counter(all_orgs)
+
+    actor_rows = []
+    for org, count in org_counts.items():
+        actor = classify_actor(org)
+        actor_rows.append((org, count, actor))
+
+    actor_df = pd.DataFrame(
+        actor_rows,
+        columns=["organization", "count", "actor_type"]
+    )
+
+    companies = actor_df.query("actor_type == 'Company'")["organization"].tolist()
+    company_set = set(companies)
+
+    # Re-filter df_ai for AI-related articles based on existing definition
+    # This assumes df and AI_KEYWORDS are defined as in previous cells.
+    if 'df' in locals() and 'AI_KEYWORDS' in locals():
+        def is_ai_article(text):
+            if not isinstance(text, str):
+                return False
+            t = text.lower()
+            return any(k in t for k in AI_KEYWORDS)
+
+        df["is_ai"] = df["plain_text"].apply(is_ai_article)
+        df_ai = df[df["is_ai"]].copy()
+        df_ai["published_date"] = pd.to_datetime(df_ai["published_date"], errors="coerce")
+        df_ai["year"] = df_ai["published_date"].dt.year
+        df_ai = df_ai[(df_ai["year"] >= 2016) & (df_ai["year"] <= 2024)]
+    else:
+        print("Warning: df or AI_KEYWORDS not found. df_ai might not be correctly initialized.")
+else:
+    print("Warning: df_sample or 'org_entities' column not found. Skipping orgs related processing.")
+
+### Enhance Sentiment Analysis with a Danish-specific Model
+
+To improve the accuracy of sentiment analysis for Danish text, we'll leverage a pre-trained model from Hugging Face's `transformers` library. This model is specifically trained on Danish data, making it more effective than a generic model like VADER for this language.
+
+!pip install transformers torch -q
+
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from scipy.special import softmax
+import numpy as np
+
+model_name = "cardiffnlp/twitter-xlm-roberta-base-sentiment" # Using a robust multilingual model
+tokenizer = None
+model = None
+
+try:
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+    print(f"Successfully loaded model: {model_name}")
+except Exception as e:
+    print(f"Error loading sentiment model '{model_name}': {e}")
+    print("Please ensure the model name is correct, you have network access, and if it's a private model, that you are authenticated with Hugging Face (e.g., using `notebook_login()` or `hf_hub_login()` with a token).")
+
+def get_danish_sentiment(text):
+    if tokenizer is None or model is None:
+        return np.nan # Model not loaded, return NaN
+    if not isinstance(text, str) or len(text) < 50:
+        return np.nan
+    try:
+        encoded_text = tokenizer(text, return_tensors='pt', truncation=True, max_length=512)
+        output = model(**encoded_text)
+        scores = output[0][0].detach().numpy()
+        scores = softmax(scores)
+        # The model provides scores for Negative, Neutral, Positive (assuming order)
+        sentiment_score = scores[2] - scores[0] # Positive score - Neutral score (or similar logic depending on model output)
+        return sentiment_score
+    except Exception as e:
+        print(f"Error during sentiment prediction for text: {text[:100]}... Error: {e}")
+        return np.nan
+
+# Apply the new sentiment analysis function to df_ai
+if 'df_ai' in locals() and not df_ai.empty and 'plain_text' in df_ai.columns:
+    df_ai['danish_sentiment'] = df_ai['plain_text'].apply(get_danish_sentiment)
+    print("Descriptive statistics for the new sentiment scores:")
+    display(df_ai['danish_sentiment'].describe())
+else:
+    print("Warning: df_ai is not properly initialized or 'plain_text' column is missing. Cannot apply sentiment analysis.")
+
+### Re-calculate Sentiment Labels and Regenerate Plot
+
+Now we'll re-classify the sentiment based on the new `danish_sentiment` scores and regenerate the stacked bar chart to visualize the distribution.
+
+def new_sentiment_label(x):
+    if pd.isna(x):
+        return "Neutral" # Or consider dropping NaN rows for plotting
+    if x > 0.05:
+        return "Positive"
+    elif x < -0.05:
+        return "Negative"
+    else:
+        return "Neutral"
+
+# Ensure df_ai and 'danish_sentiment' are available before proceeding
+if 'df_ai' in locals() and not df_ai.empty and 'danish_sentiment' in df_ai.columns:
+    df_ai["new_sentiment_label"] = df_ai["danish_sentiment"].apply(new_sentiment_label)
+
+    # Ensure 'year' column is available and valid
+    if 'year' not in df_ai.columns or df_ai['year'].isnull().any():
+        print("Warning: 'year' column is missing or contains NaN. Attempting to re-create.")
+        df_ai['published_date'] = pd.to_datetime(df_ai['published_date'], errors='coerce')
+        df_ai['year'] = df_ai['published_date'].dt.year
+        df_ai = df_ai.dropna(subset=['year']).astype({'year': int})
+
+    sentiment_dist_new = (
+        df_ai
+        .groupby(["year", "new_sentiment_label"])
+        .size()
+        .reset_index(name="count")
+    )
+
+    pivot_new = sentiment_dist_new.pivot(
+        index="year",
+        columns="new_sentiment_label",
+        values="count"
+    ).fillna(0)
+
+    # Ensure all sentiment labels are present for consistent plotting
+    all_labels = ["Positive", "Neutral", "Negative"]
+    for label in all_labels:
+        if label not in pivot_new.columns:
+            pivot_new[label] = 0
+    pivot_new = pivot_new[all_labels] # Order columns for consistent stacking
+
+    pivot_new.plot(kind="bar", stacked=True, figsize=(12, 6))
+    plt.title("Sentiment Distribution of AI Coverage in Denmark (2016–2024) with Danish Model")
+    plt.xlabel("Year")
+    plt.ylabel("Number of Articles")
+    plt.legend(title="Sentiment")
+    plt.tight_layout()
+    plt.show()
+else:
+    print("Warning: df_ai or 'danish_sentiment' column not found. Cannot generate sentiment distribution plot.")
+
+!pip install spacy
+!python -m spacy download da_core_news_lg
+
+import spacy
+nlp = spacy.load("da_core_news_lg")
+
+def extract_org_entities(text, max_chars=1500):
+    if not isinstance(text, str):
+        return []
+    doc = nlp(text[:max_chars])
+    return list({
+        ent.text.strip()
+        for ent in doc.ents
+        if ent.label_ == "ORG" and len(ent.text.strip()) > 2
+    })
+
+df_sample = df.sample(10000, random_state=42)
+df_sample["org_entities"] = df_sample["plain_text"].apply(extract_org_entities)
+
+df_sample.to_pickle("/content/drive/MyDrive/df_sample_with_orgs.pkl")
+
+
+AI_KEYWORDS = ["AI", "kunstig intelligens", "maskinlæring", "dyb læring", "neural netværk", "automatisering",
+                  "robotik", "dataanalyse", "algoritme", "intelligente systemer", "GPT", "OPENAI", "LLM", "chatbot",
+                    "sprogmodel", "generativ AI", "AI-assistent", "AI-drevet", "computer vision", "naturlig sprogbehandling",
+                    "AI-platform", "AI-teknologi", "AI-forskning", "AI-innovation", "AI-applikationer", "AI-løsninger",
+                    "AI-udvikling", "AI-sikkerhed", "AI-etik", "AI-regulering", "AI-politik", "AI-strategi", "AI-investering",
+                    "AI-startup", "AI-industrien", "AI-marked", "AI-trends", "AI-fremtid", "robotter", "automatiserede systemer",
+                    "intelligente maskiner", "AI-integration", "AI-implementering", "AI-optimering", "AI-overvågning"]
+
+def is_ai_article(text):
+    if not isinstance(text, str):
+        return False
+    t = text.lower()
+    return any(k in t for k in AI_KEYWORDS)
+
+df["is_ai"] = df["plain_text"].apply(is_ai_article)
+
+df["is_ai"].value_counts()
+
+df_ai = df[df["is_ai"]].copy()
+
+print("AI-related articles:", df_ai.shape[0])
+
+df_ai["published_date"] = pd.to_datetime(df_ai["published_date"], errors="coerce")
+df_ai["year"] = df_ai["published_date"].dt.year
+
+df_ai = df_ai[(df_ai["year"] >= 2016) & (df_ai["year"] <= 2024)]
+
+df_ai["year"].value_counts().sort_index()
+
+
